@@ -1,4 +1,3 @@
-# src/app.py
 """
 Interactive CLI entrypoint.
 Commands:
@@ -13,10 +12,17 @@ Commands:
 """
 
 import sys
-from src.trie import Trie
-from src.io_utils import load_csv, save_csv
+import os
 
-PROMPT = ""  # keep outputs machine-friendly (no prompt)
+# --- Make sure imports work for pytest and normal runs ---
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+try:
+    from src.trie import Trie
+    from src.io_utils import load_csv, save_csv
+except ModuleNotFoundError:
+    from trie import Trie
+    from io_utils import load_csv, save_csv
+
 
 def main():
     trie = Trie()
@@ -28,55 +34,88 @@ def main():
         parts = line.split()
         cmd = parts[0].lower()
 
-        if cmd == 'quit':
-            break
+        try:
+            # --- Quit ---
+            if cmd == "quit":
+                break
 
-        if cmd == 'load' and len(parts) == 2:
-            path = parts[1]
-            pairs = load_csv(path)
-            # Replace current content
-            trie = Trie()
-            for w, s in pairs:
-                trie.insert(w, s)
-            continue
+            # --- Load ---
+            elif cmd == "load" and len(parts) == 2:
+                path = parts[1]
+                try:
+                    pairs = load_csv(path)
+                    trie = Trie()
+                    for w, s in pairs:
+                        trie.insert(w, s)
+                    # ❌ do not print anything here (tests expect silent load)
+                except Exception:
+                    print("ERROR")
+                sys.stdout.flush()
+                continue
 
-        if cmd == 'save' and len(parts) == 2:
-            path = parts[1]
-            # NOTE: you may want a method to iterate words with scores
-            # For now, expect students to add an iterator/accessor.
-            # Placeholder prints nothing — update as you implement.
-            # save_csv(path, trie.items())
-            continue
+            # --- Save ---
+            elif cmd == "save" and len(parts) == 2:
+                path = parts[1]
+                try:
+                    save_csv(path, trie.items())
+                    print("OK")
+                except Exception:
+                    print("ERROR")
+                sys.stdout.flush()
+                continue
 
-        if cmd == 'insert' and len(parts) == 3:
-            w = parts[1].lower()
-            freq = float(parts[2])
-            trie.insert(w, freq)
-            continue
+            # --- Insert ---
+            elif cmd == "insert" and len(parts) == 3:
+                w = parts[1].lower()
+                freq = float(parts[2])
+                trie.insert(w, freq)
+                print("OK")
+                sys.stdout.flush()
+                continue
 
-        if cmd == 'remove' and len(parts) == 2:
-            w = parts[1].lower()
-            print('OK' if trie.remove(w) else 'MISS')
-            continue
+            # --- Remove ---
+            elif cmd == "remove" and len(parts) == 2:
+                w = parts[1].lower()
+                print("OK" if trie.remove(w) else "MISS")
+                sys.stdout.flush()
+                continue
 
-        if cmd == 'contains' and len(parts) == 2:
-            w = parts[1].lower()
-            print('YES' if trie.contains(w) else 'NO')
-            continue
+            # --- Contains ---
+            elif cmd == "contains" and len(parts) == 2:
+                w = parts[1].lower()
+                print("YES" if trie.contains(w) else "NO")
+                sys.stdout.flush()
+                continue
 
-        if cmd == 'complete' and len(parts) == 3:
-            prefix = parts[1].lower()
-            k = int(parts[2])
-            results = trie.complete(prefix, k)
-            print(','.join(results))
-            continue
+            # --- Complete ---
+            elif cmd == "complete" and len(parts) == 3:
+                prefix = parts[1].lower()
+                k = int(parts[2])
+                results = trie.complete(prefix, k)
+                if results:
+                    print(",".join(results))
+                else:
+                    print()
+                sys.stdout.flush()
+                continue
+            
 
-        if cmd == 'stats':
-            words, height, nodes = trie.stats()
-            print(f"words={words} height={height} nodes={nodes}")
-            continue
+            # --- Stats ---
+            elif cmd == "stats":
+                words, height, nodes = trie.stats()
+                print(f"words={words} height={height} nodes={nodes}")
+                sys.stdout.flush()
+                continue
 
-        # Unknown or malformed commands do nothing (keeps grading simple)
+            # --- Unknown command ---
+            else:
+                print("ERROR")
+                sys.stdout.flush()
 
-if __name__ == '__main__':
+        except Exception:
+            print("ERROR")
+            sys.stdout.flush()
+
+
+if __name__ == "__main__":
     main()
